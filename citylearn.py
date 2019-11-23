@@ -149,7 +149,7 @@ class CityLearn(gym.Env):
     def __init__(self, building_attributes, solar_profile, building_ids, buildings_states_actions = None, simulation_period = (0,8759), cost_function = ['quadratic']):
         with open(buildings_states_actions) as json_file:
             self.buildings_states_actions = json.load(json_file)
-        
+
         self.buildings_states_actions_filename = buildings_states_actions
         self.building_attributes = building_attributes
         self.solar_profile = solar_profile
@@ -177,7 +177,7 @@ class CityLearn(gym.Env):
         
     def step(self, actions):
         assert len(actions) == self.n_buildings, "The length of the list of actions should match the length of the list of buildings."
-        
+        self.next_hour()
         rewards = []
         self.state = []
         electric_demand = 0

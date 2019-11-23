@@ -10,6 +10,11 @@ np.random.seed(1)
 class Buffer:
     def __init__(self):
         self.buffer = []
+        self.device = 'cpu'
+        if torch.cuda.is_available():
+            print("Buffer set to GPU")
+            self.device = 'cuda'
+        
         
     def append_sample(self, sample):
         self.buffer.append(sample)
@@ -27,7 +32,7 @@ class Buffer:
             r.append(values[2])
             s_next.append(values[3])
             done.append([4])
-        return torch.tensor(s,dtype=torch.float32), torch.tensor(a,dtype=torch.float32), torch.tensor(r,dtype=torch.float32), torch.tensor(s_next,dtype=torch.float32), done
+        return torch.tensor(s,dtype=torch.float32, device=self.device),torch.tensor(a,dtype=torch.float32, device=self.device), torch.tensor(r,dtype=torch.float32, device=self.device),torch.tensor(s_next,dtype=torch.float32, device=self.device), done
     
     def __len__(self):
          return len(self.buffer)
@@ -103,6 +108,9 @@ class TD3_Agents:
         
         # Parameters
         self.device = "cpu"
+        if torch.cuda.is_available():
+            print("TD3 Agents set to GPU!")
+            self.device = 'cuda'
         self.time_step = 0
         self.observation_spaces = observation_spaces
         self.action_spaces = action_spaces
@@ -135,7 +143,8 @@ class TD3_Agents:
         
         actions = []
         for i, state in enumerate(states):
-            a = self.actor[i](torch.tensor(state, dtype=torch.float32))
+            a = self.actor[i](torch.tensor(state, dtype=torch.float32,
+                                           device=self.device))
             self.a_track1.append(a)
             a = a.cpu().detach().numpy() + expl_noise * np.random.normal(loc = 0, scale = self.max_action, size=a.shape)
             self.a_track2.append(a)
@@ -171,6 +180,16 @@ class TD3_Agents:
                         noise = (torch.randn_like(action) * self.policy_noise).clamp(-self.noise_clip, self.noise_clip)
                         
                         # Select action according to policy
+
+                        #DEBUG
+                        #print("DEBUG")
+                        #print("next state device is ", next_state.device)
+                        #print("state device is ", state.device)
+                        #print("action device is ", action.device)
+                        #print("reward device is ", reward.device)
+                        #print("mask is ", type(dones_mask))
+                        #print("mask device is ", dones_mask.device)
+                        #raise NotImplementedError
                         next_action = (self.actor_target[i](next_state) + noise).clamp(-self.max_action, self.max_action)
                         
                         # Compute the target Q value

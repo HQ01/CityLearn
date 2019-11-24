@@ -11,13 +11,15 @@ class Buffer:
     def __init__(self):
         self.buffer = []
         self.device = 'cpu'
+        self.limit = 2000
         if torch.cuda.is_available():
-            print("Buffer set to GPU")
             self.device = 'cuda'
         
         
     def append_sample(self, sample):
         self.buffer.append(sample)
+        if self.__len__() > self.limit:
+            self.buffer = self.buffer[-self.limit:-1]
         
     def sample(self, sample_size):
         s, a, r, s_next, done = [],[],[],[],[]
@@ -31,9 +33,9 @@ class Buffer:
             a.append(values[1])
             r.append(values[2])
             s_next.append(values[3])
-            done.append([4])
+            done.append(values[4])
         return torch.tensor(s,dtype=torch.float32, device=self.device),torch.tensor(a,dtype=torch.float32, device=self.device), torch.tensor(r,dtype=torch.float32, device=self.device),torch.tensor(s_next,dtype=torch.float32, device=self.device), done
-    
+   
     def __len__(self):
          return len(self.buffer)
                            
@@ -87,6 +89,7 @@ class Critic(nn.Module):
         return q1
     
 class TD3_Agents:
+
     def __init__(self, observation_spaces = None, action_spaces = None):
         
         #Hyper-parameters

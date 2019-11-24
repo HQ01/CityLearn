@@ -146,7 +146,7 @@ def building_loader(building_attributes, solar_profile, building_ids, buildings_
     return buildings, observation_spaces, action_spaces
 
 class CityLearn(gym.Env):  
-    def __init__(self, building_attributes, solar_profile, building_ids, buildings_states_actions = None, simulation_period = (0,8759), cost_function = ['quadratic']):
+    def __init__(self, building_attributes, solar_profile, building_ids, buildings_states_actions = None, simulation_period = (0,1999), cost_function = ['quadratic']):
         with open(buildings_states_actions) as json_file:
             self.buildings_states_actions = json.load(json_file)
 
@@ -315,7 +315,10 @@ class CityLearn(gym.Env):
             cost['ramping'] = np.abs((self.net_electric_consumption - np.roll(self.net_electric_consumption,1))[1:]).sum()/self.cost_rbc['ramping']
             
         if '1-load_factor' in self.cost_function:
-            cost['1-load_factor'] = np.mean([1-np.mean(self.net_electric_consumption[i:i+int(8760/12)])/ np.max(self.net_electric_consumption[i:i+int(8760/12)]) for i in range(0,len(self.net_electric_consumption), int(8760/12))])/self.cost_rbc['1-load_factor']
+            cost['1-load_factor'] = np.mean([1-np.mean(self.net_electric_consumption[i:i+int(2000/12)])/
+                     np.max(self.net_electric_consumption[i:i+int(2000/12)])
+                     for i in range(0,len(self.net_electric_consumption),
+                                    int(20000/12))])/self.cost_rbc['1-load_factor']
            
         if 'peak_to_valley_ratio' in self.cost_function:
             cost['peak_to_valley_ratio'] = np.median([self.net_electric_consumption[i:i+24].max()/self.net_electric_consumption[i:i+24].min() for i in range(0,len(self.net_electric_consumption),24)])/self.cost_rbc['peak_to_valley_ratio']
@@ -339,7 +342,10 @@ class CityLearn(gym.Env):
             cost['ramping'] = np.abs((self.net_electric_consumption - np.roll(self.net_electric_consumption,1))[1:]).sum()
             
         if '1-load_factor' in self.cost_function:
-            cost['1-load_factor'] = np.mean([1-np.mean(self.net_electric_consumption[i:i+int(8760/12)])/ np.max(self.net_electric_consumption[i:i+int(8760/12)]) for i in range(0,len(self.net_electric_consumption), int(8760/12))])
+            cost['1-load_factor'] = np.mean([1-np.mean(self.net_electric_consumption[i:i+int(2000/12)])/
+                     np.max(self.net_electric_consumption[i:i+int(2000/12)])
+                     for i in range(0,len(self.net_electric_consumption),
+                                    int(2000/12))])
            
         if 'peak_to_valley_ratio' in self.cost_function:
             cost['peak_to_valley_ratio'] = np.median([self.net_electric_consumption[i:i+24].max()/self.net_electric_consumption[i:i+24].min() for i in range(0,len(self.net_electric_consumption),24)])

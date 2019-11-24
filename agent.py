@@ -7,7 +7,7 @@ import random
 import copy
 np.random.seed(1)
 
-class Buffer:
+class Buffer():
     def __init__(self):
         self.buffer = []
         self.device = 'cpu'
@@ -88,9 +88,10 @@ class Critic(nn.Module):
         q1 = self.l3(q1)
         return q1
     
-class TD3_Agents:
+class TD3_Agents():
 
     def __init__(self, observation_spaces = None, action_spaces = None):
+        # Multi-agent version of TD3
         
         #Hyper-parameters
         self.discount = 0.992 #Discount factor
@@ -239,4 +240,3 @@ class TD3_Agents:
                         for param, target_param in zip(self.actor[i].parameters(), self.actor_target[i].parameters()):
                             target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
         self.time_step += 1
-                            

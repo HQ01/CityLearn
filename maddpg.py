@@ -1,10 +1,8 @@
 import torch
 import torch.nn.functional as fix
-from gym.spaces import Box, Discrete
-from misc import soft_update, average_gradients
+# from gym.spaces import Box, Discrete
+# from misc import soft_update, average_gradients
 from single_agents import DDPG_single, TD3_single
-
-
 
 class MA_DDPG():
     def __init__(self, observation_spaces = None, action_spaces = None, hyper_params = {}):
@@ -48,15 +46,15 @@ class MA_DDPG():
 
         # init agents
         #\TODO match dimension with buffer input
-        state_dim = observation_spaces[0].size()[0]
-        action_dim = action_spaces[0].size()[0]
-        
+        state_dim = observation_spaces[0].shape[0]
+        action_dim = action_spaces[0].shape[0]
+
         if self.algo_type == 'DDPG':
             self.agents = [DDPG_single(state_dim, action_dim, self.max_action)]
         else:
             self.agents = [TD3_single(state_dim, action_dim, self.max_action, self.expl_noise_init, self.expl_noise_final, self.expl_noise_decay_rate)]
+        self.agents *= self.n_buildings
 
-    
     @property
     def policies(self):
         return [a.actor for a in self.agents]
@@ -145,7 +143,7 @@ class MA_DDPG():
     
     # def update_targets(self):
     #     for a in self.agents:
-    #         self.soft_update(a.actor_target, a.actor, self.tau)
+    #         self.soft_update(a.actor_target, a.actor,delayedf.tau)
     #         self.soft_update(a.critic_target, a.critic, self.tau)
     
     def to_train(self, device = None):
@@ -180,12 +178,12 @@ class MA_DDPG():
 
     def pack_hyper_params(self):
         #\TODO decide what to pack
-        hyper_params = {
-            'gamma' : self.gamma,
-            'tau' : self.tau,
-            "lr" : self.lr_init,
-
-        }
+        # hyper_params = {
+        #     'gamma' : self.gadelayed
+        #     'tau' : self.tau,delayed
+        #     "lr" : self.lr_init,
+        #
+        # }
 
         return hyper_params
     

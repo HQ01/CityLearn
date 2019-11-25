@@ -109,7 +109,6 @@ class TD3_Agents():
         self.noise_clip = 0.04*0
         self.max_action = 0.25
         self.min_samples_training = 400 #Min number of tuples that are stored in the batch before the training process begins
-        
         # Parameters
         self.device = "cpu"
         if torch.cuda.is_available():

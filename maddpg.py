@@ -4,6 +4,7 @@ import torch.nn.functional as fix
 # from misc import soft_update, average_gradients
 from single_agents import DDPG_single, TD3_single
 
+MSELoss = torch.nn.MSELoss()
 class MA_DDPG():
     def __init__(self, observation_spaces = None, action_spaces = None, hyper_params = {}):
         """
@@ -50,7 +51,7 @@ class MA_DDPG():
         action_dim = action_spaces[0].shape[0]
 
         if self.algo_type == 'DDPG':
-            self.agents = [DDPG_single(state_dim, action_dim, self.max_action)]
+            self.agents = [DDPG_single(state_dim, action_dim, self.max_action, num_agents=self.n_buildings)]
         else:
             self.agents = [TD3_single(state_dim, action_dim, self.max_action, self.expl_noise_init, self.expl_noise_final, self.expl_noise_decay_rate)]
         self.agents *= self.n_buildings
@@ -96,15 +97,29 @@ class MA_DDPG():
             noise_f = lambda x : x + (torch.randn_like(x) * self.policy_noise).clamp(-self.noise_clip, self.noise_clip).to(x.device)
             all_target_actions = list(map(noise_f, all_target_actions))
 
-        target_value_function = torch.cat((*next_obs, all_target_actions), dim=1)
-        target_value = (rewards[agent_id].view(-1, 1) + self.gamma * curr_agent.critic_target(target_value_function) *\
-             (1 - dones[agent_id].view(-1, 1)))
-        
-        
+        # if self.algo_type == 'DDPG':
+        #     target_value_function = torch.cat((next_obs[agent_id], all_target_actions[agent_id]), dim=1)
+        #     target_value = (
+        #             rewards[agent_id].view(-1, 1) + self.gamma * curr_agent.critic_target(target_value_function) * \
+        #             (1 - dones[agent_id].view(-1, 1)))
+        #     actual_value_function = torch.cat((obs[agent_id], actions[agent_id]), dim=1)
+        #     actual_value = curr_agent.critic(actual_value_function)
+        # else:
+        #     target_value_function = torch.cat((next_obs, all_target_actions), dim=1)
+        #     target_value = (
+        #             rewards[agent_id].view(-1, 1) + self.gamma * curr_agent.critic_target(target_value_function) * \
+        #             (1 - dones[agent_id].view(-1, 1)))
+        #     actual_value_function = torch.cat((*obs, *actions), dim=1)
+        #     actual_value = curr_agent.critic(actual_value_function)
+
+        target_value_function = torch.cat((*next_obs, *all_target_actions), dim=1)
+        target_value = (
+                rewards[agent_id].view(-1, 1) + self.gamma * curr_agent.critic_target(target_value_function) * \
+                (1 - dones[agent_id].view(-1, 1)))
         actual_value_function = torch.cat((*obs, *actions), dim=1)
         actual_value = curr_agent.critic(actual_value_function)
-        
-        value_function_loss = torch.nn.MSELoss(actual_value, target_value)
+
+        value_function_loss = MSELoss(actual_value, target_value.detach())
         value_function_loss.backward()
         torch.nn.utils.clip_grad_norm(curr_agent.critic.parameters(), 0.5)
         curr_agent.critic_optimizer.step()
@@ -120,8 +135,9 @@ class MA_DDPG():
                     all_agent_policies.append(curr_agent_policy)
                 else:
                     all_agent_policies.append(policy(ob))
-            
+
             policy_function = torch.cat((*obs, *all_agent_policies), dim=1)
+
             policy_function_loss = -curr_agent.critic(policy_function).mean()
             policy_function_loss += (curr_agent_policy**2).mean() * 1e-3
             policy_function_loss.backward()

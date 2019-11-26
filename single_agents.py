@@ -80,18 +80,22 @@ class Actor_DDPG(nn.Module):
 
 
 class Critic_DDPG(nn.Module):
-    def __init__(self, state_dim, action_dim):
+    def __init__(self, state_dim, action_dim, num_agents=1):
         super(Critic_DDPG, self).__init__()
 
-        self.l1 = nn.Linear(state_dim + action_dim, 400)
+        self.l1 = nn.Linear((state_dim + action_dim) * num_agents, 400)
         self.l2 = nn.Linear(400, 300)
         self.l3 = nn.Linear(300, 1)
 
-    def forward(self, state, action):
-        q = F.relu(self.l1(torch.cat([state, action], 1)))
+    # def forward(self, state, action):
+    #     q = F.relu(self.l1(torch.cat([state, action], 1)))
+    #     q = F.relu(self.l2(q))
+    #     return self.l3(q)
+
+    def forward(self, X):
+        q = F.relu(self.l1(X))
         q = F.relu(self.l2(q))
         return self.l3(q)
-
 
 class TD3_single():
     def __init__(self, state_dim, action_dim, max_action, expl_noise_init, expl_noise_final, expl_noise_decay_rate):
@@ -124,16 +128,16 @@ class TD3_single():
 
 
 class DDPG_single():
-    def __init__(self, state_dim, action_dim, max_action):
+    def __init__(self, state_dim, action_dim, max_action, num_agents):
         self.max_action = max_action
 
         self.actor = Actor_DDPG(state_dim, action_dim, max_action)
         self.actor_target = copy.deepcopy(self.actor)
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=3e-4)
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=1e-4)
 
-        self.critic = Critic_DDPG(state_dim, action_dim)
+        self.critic = Critic_DDPG(state_dim, action_dim, num_agents)
         self.critic_target = copy.deepcopy(self.critic)
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=3e-4)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=1e-4)
         self.exploration = OUNoise(action_dim)
 
         self.iter = 0

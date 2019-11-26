@@ -128,16 +128,16 @@ class TD3_single():
 
 
 class DDPG_single():
-    def __init__(self, state_dim, action_dim, max_action, num_agents):
+    def __init__(self, state_dim, action_dim, max_action, num_agents, learning_rate):
         self.max_action = max_action
 
         self.actor = Actor_DDPG(state_dim, action_dim, max_action)
         self.actor_target = copy.deepcopy(self.actor)
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=1e-4)
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=learning_rate)
 
         self.critic = Critic_DDPG(state_dim, action_dim, num_agents)
         self.critic_target = copy.deepcopy(self.critic)
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=1e-4)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=learning_rate)
         self.exploration = OUNoise(action_dim)
 
         self.iter = 0

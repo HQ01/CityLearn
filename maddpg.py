@@ -18,17 +18,19 @@ class MA_DDPG():
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
         self.gamma = hyper_params.get('gamma', 0.992) #self.discount
-        self.batch_size = hyper_params.get('batch_size', 100)
+        self.lr = hyper_params.get('lr', 1e-4)
+        # self.batch_size = hyper_params.get('batch_size', 100)
         self.tau = hyper_params.get('tau', 5e-3)
         #\TODO should we enable min_samples_training?
-        self.min_samples_training = hyper_params.get('min_samples_training', 400)
+        # self.min_samples_training = hyper_params.get('min_samples_training', 400)
         self.max_action = hyper_params.get('max_action', 0.25)
-        self.buffer = None #\TODO fix buffer
 
+        '''
         # we don't change lr rate at this time \TODO verify s
         self.lr_init = hyper_params.get('lr_init', 1e-3)
         self.lr_final = hyper_params.get('lr_final', 1e-3)
         self.lr_decay_rate = hyper_params.get('lr_decay_rate', 1 / (78 * 8760))
+        '''
 
 
         # TD3 hyper-params
@@ -51,7 +53,7 @@ class MA_DDPG():
         action_dim = action_spaces[0].shape[0]
 
         if self.algo_type == 'DDPG':
-            self.agents = [DDPG_single(state_dim, action_dim, self.max_action, num_agents=self.n_buildings)]
+            self.agents = [DDPG_single(state_dim, action_dim, self.max_action, num_agents=self.n_buildings, learning_rate=self.lr)]
         else:
             self.agents = [TD3_single(state_dim, action_dim, self.max_action, self.expl_noise_init, self.expl_noise_final, self.expl_noise_decay_rate)]
         self.agents *= self.n_buildings

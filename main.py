@@ -32,7 +32,7 @@ def run(config):
 
     # Instantiating the control agent(s)
     if config.agent_alg == 'MADDPG':
-        agents = MA_DDPG(observations_spaces, actions_spaces)
+        agents = MA_DDPG(observations_spaces, actions_spaces, hyper_params=vars(config))
     else:
         raise NotImplementedError
 
@@ -43,8 +43,7 @@ def run(config):
                           ac_dims=[a.shape[0] for a in actions_spaces])
     # TODO: store np or tensor in buffer?
     start = time.time()
-    episodes = 10
-    for e in range(episodes):
+    for e in range(config.n_episodes):
         cum_reward[e] = 0
         rewards = []
         state = env.reset()
@@ -53,7 +52,7 @@ def run(config):
         ss = 0
         while not done:
             if k % (40000 * 4) == 0:
-                print('hour: ' + str(k) + ' of ' + str(8760 * episodes))
+                print('hour: ' + str(k) + ' of ' + str(8760 * config.n_episodes))
             action = agents.select_action(statecast(state))
             action = [a.detach().numpy() for a in action]
             print(ss, action)
@@ -101,30 +100,31 @@ if __name__ == '__main__':
     parser.add_argument("--seed",
                         default=1, type=int,
                         help="Random seed")
-    parser.add_argument("--n_rollout_threads", default=1, type=int)
-    parser.add_argument("--n_training_threads", default=6, type=int)
+    # parser.add_argument("--n_rollout_threads", default=1, type=int)
+    # parser.add_argument("--n_training_threads", default=6, type=int)
     parser.add_argument("--buffer_length", default=100, type=int)
     parser.add_argument("--n_episodes", default=25000, type=int)
-    parser.add_argument("--episode_length", default=25, type=int)
-    parser.add_argument("--steps_per_update", default=100, type=int)
+    # parser.add_argument("--episode_length", default=25, type=int)
+    # parser.add_argument("--steps_per_update", default=100, type=int)
     parser.add_argument("--batch_size",
                         default=10, type=int,
                         help="Batch size for model training")
-    parser.add_argument("--n_exploration_eps", default=25000, type=int)
-    parser.add_argument("--init_noise_scale", default=0.3, type=float)
-    parser.add_argument("--final_noise_scale", default=0.0, type=float)
+    # parser.add_argument("--n_exploration_eps", default=25000, type=int)
+    # parser.add_argument("--init_noise_scale", default=0.3, type=float)
+    # parser.add_argument("--final_noise_scale", default=0.0, type=float)
     parser.add_argument("--save_interval", default=1000, type=int)
     parser.add_argument("--hidden_dim", default=64, type=int)
-    parser.add_argument("--lr", default=0.01, type=float)
-    parser.add_argument("--tau", default=0.01, type=float)
+    parser.add_argument("--lr", default=1e-4, type=float)
+    parser.add_argument("--tau", default=1e-3, type=float)
+    parser.add_argument("--gamma", default=0.8, type=float)
     parser.add_argument("--agent_alg",
                         default="MADDPG", type=str,
                         choices=['MADDPG', 'DDPG'])
-    parser.add_argument("--adversary_alg",
-                        default="MADDPG", type=str,
-                        choices=['MADDPG', 'DDPG'])
-    parser.add_argument("--discrete_action",
-                        action='store_true')
+    # parser.add_argument("--adversary_alg",
+    #                     default="MADDPG", type=str,
+    #                     choices=['MADDPG', 'DDPG'])
+    # parser.add_argument("--discrete_action",
+    #                     action='store_true')
 
     config = parser.parse_args()
 

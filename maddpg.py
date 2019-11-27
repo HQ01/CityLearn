@@ -23,7 +23,7 @@ class MA_DDPG():
         self.tau = hyper_params.get('tau', 5e-3)
         #\TODO should we enable min_samples_training?
         # self.min_samples_training = hyper_params.get('min_samples_training', 400)
-        self.max_action = hyper_params.get('max_action', 0.25)
+        self.max_action = hyper_params.get('max_action', 1)
 
         '''
         # we don't change lr rate at this time \TODO verify s
@@ -84,7 +84,7 @@ class MA_DDPG():
         '''
         return [a.select_action(obs, explore=explore) for a, obs in zip(self.agents, observations)]
     
-    def update(self, sample, agent_id, logger=None):
+    def update(self, sample, agent_id, logger=None, global_step=None):
         obs, actions, rewards, next_obs, dones = sample # notice that we still need dones because sample could be at different place
 
         curr_agent = self.agents[agent_id]
@@ -153,8 +153,11 @@ class MA_DDPG():
 
         curr_agent.iter += 1
         if logger is not None:
-            pass #\TODO add logger
-    
+            logger.add_scalar(tag='value fucntion loss', scalar_value=value_function_loss,
+                              global_step=global_step)
+            logger.add_scalar(tag='policy fucntion loss', scalar_value=value_function_loss,
+                              global_step=global_step)
+
     def soft_update(self, target, source, tau):
         for target_param, param in zip(target.parameters(), source.parameters()):
             target_param.data.copy_(target_param.data * (1.0 - tau) + param.data * tau)

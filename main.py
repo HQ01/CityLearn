@@ -9,6 +9,8 @@ from maddpg import MA_DDPG
 from citylearn import CityLearn
 from buffer import ReplayBuffer
 from reward_function import reward_function
+from torch.utils.tensorboard import SummaryWriter
+from citylearn import TIME_PERIOD
 
 # implement main
 USE_CUDA = torch.cuda.is_available()
@@ -23,6 +25,8 @@ def run(config):
     building_state_actions = 'buildings_state_action_space.json'
     # building_ids = ["Building_" + str(i) for i in range(1, config.num_buildings + 1)]
     config.num_buildings = 3
+    logger  = SummaryWriter(log_dir=config.log_path)
+    # TODO fix here
     building_ids = ["Building_" + str(i) for i in [1, 2, 5]]
     print(building_ids)
     env = CityLearn(building_attributes, solar_profile, building_ids, buildings_states_actions=building_state_actions,
@@ -52,10 +56,11 @@ def run(config):
         ss = 0
         while not done:
             if k % (40000 * 4) == 0:
-                print('hour: ' + str(k) + ' of ' + str(8760 * config.n_episodes))
+                print('hour: ' + str(k) + ' of ' + str(TIME_PERIOD * config.n_episodes))
             action = agents.select_action(statecast(state))
             action = [a.detach().numpy() for a in action]
-            print(ss, action)
+            if ss == 0:
+                print(ss, action)
             ss+=1
             next_state, reward, done, _ = env.step(action)
             reward = reward_function(reward)  # See comments in reward_function.py
@@ -71,7 +76,7 @@ def run(config):
                 for a_i in range(agents.n_buildings):
                     sample = buffer.sample(config.batch_size,
                                            to_gpu=USE_CUDA)
-                    agents.update(sample, a_i, logger=None)
+                    agents.update(sample, a_i, logger=logger, global_step=e*TIME_PERIOD + ss)
                     # print('update')
 
                 # maddpg.update_all_targets()
@@ -95,6 +100,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_path", default='data/', type=str,
                         help="Path of environment data")
+    parser.add_argument("--log_path", default='log/', type=str,
+                        help="Path of log files")
     parser.add_argument("--num_buildings", default=2, type=int,
                         choices=range(1, 10), help="Number of buildings (1 to 9)")
     parser.add_argument("--seed",
@@ -114,7 +121,7 @@ if __name__ == '__main__':
     # parser.add_argument("--final_noise_scale", default=0.0, type=float)
     parser.add_argument("--save_interval", default=1000, type=int)
     parser.add_argument("--hidden_dim", default=64, type=int)
-    parser.add_argument("--lr", default=1e-4, type=float)
+    parser.add_argument("--lr", default=1e-6, type=float)
     parser.add_argument("--tau", default=1e-3, type=float)
     parser.add_argument("--gamma", default=0.8, type=float)
     parser.add_argument("--agent_alg",

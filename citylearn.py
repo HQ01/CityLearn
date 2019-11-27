@@ -5,7 +5,7 @@ import pandas as pd
 import json
 from energy_models import HeatPump, ElectricHeater, EnergyStorage, Building
 
-TIME_PERIOD = 200
+TIME_PERIOD = 1000
 
 
 # Reference Rule-based controller. Used as a baseline to calculate the costs in CityLearn

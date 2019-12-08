@@ -24,10 +24,10 @@ def run(config):
     solar_profile = data_folder / 'solar_generation_1kW.csv'
     building_state_actions = 'buildings_state_action_space.json'
     # building_ids = ["Building_" + str(i) for i in range(1, config.num_buildings + 1)]
-    config.num_buildings = 6
+    config.num_buildings = 3
     logger  = SummaryWriter(log_dir=config.log_path)
     # TODO fix here
-    building_ids = ["Building_" + str(i) for i in [1, 2, 5, 6, 7, 8]]
+    building_ids = ["Building_" + str(i) for i in [1, 2, 5]] #[1,2,5,6,7,8]
     print(building_ids)
     env = CityLearn(building_attributes, solar_profile, building_ids, buildings_states_actions=building_state_actions,
                     cost_function=['ramping', '1-load_factor', 'peak_to_valley_ratio', 'peak_demand',
@@ -59,9 +59,14 @@ def run(config):
                 print('hour: ' + str(k) + ' of ' + str(TIME_PERIOD * config.n_episodes))
             action = agents.select_action(statecast(state))
             action = [a.detach().numpy() for a in action]
+            # if batch norm:
+            action = [np.squeeze(a, axis=0) for a in action]
             if ss % 10 == 0:
                 print(ss, action)
             ss += 1
+            #print("action is ", action)
+            #print(action[0].shape)
+            #raise NotImplementedError
             next_state, reward, done, _ = env.step(action)
             reward = reward_function(reward)  # See comments in reward_function.py
             # agents.add_to_buffer()

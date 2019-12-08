@@ -67,21 +67,36 @@ class Actor_DDPG(nn.Module):
     def __init__(self, state_dim, action_dim, max_action):
         super(Actor_DDPG, self).__init__()
 
+        self.preprocess = nn.BatchNorm1d(state_dim)
+        self.preprocess.weight.data.fill_(1)
+        self.preprocess.bias.data.fill_(0)
+
+        # self.preprocess = lambda x: x
+
+
         self.l1 = nn.Linear(state_dim, 32)
-        self.l2 = nn.Linear(32, 16)
+        self.l2 = nn.Linear(32, 32)
         self.l3 = nn.Linear(32, action_dim)
         self.tanh = nn.Tanh()
 
+        self.l3.weight.data.uniform_(-3e-3, 3e-3)
+
         init = lambda x: nn.init.zeros_(x)
-        init(self.l1.weight)
-        init(self.l2.weight)
-        init(self.l3.weight)
+        #init(self.l1.weight)
+        #init(self.l2.weight)
+        #init(self.l3.weight)
 
         self.max_action = max_action
 
     def forward(self, state):
+        #print("state shape is ", state.size())
+        if len(state.size()) == 1:
+            state = state.unsqueeze(0)
+        state = self.preprocess(state)
+        #print("state shape is ", state.size())
+        #raise NotImplementedError
         a = F.relu(self.l1(state))
-        # a = F.relu(self.l2(a))
+        a = F.relu(self.l2(a))
         # print(self.l3(a))
         return self.max_action * self.tanh(self.l3(a))
 
@@ -90,17 +105,27 @@ class Critic_DDPG(nn.Module):
     def __init__(self, state_dim, action_dim, num_agents=1):
         super(Critic_DDPG, self).__init__()
 
+        self.preprocess = nn.BatchNorm1d((state_dim + action_dim) * num_agents)
+        self.preprocess.weight.data.fill_(1)
+        self.preprocess.bias.data.fill_(0)
+        # self.preprocess = lambda x: x
+
         self.l1 = nn.Linear((state_dim + action_dim) * num_agents, 64)
         self.l2 = nn.Linear(64, 32)
         self.l3 = nn.Linear(32, 1)
 
+        #self.l3.weight.data.uniform_(-3e-3, 3e-3)
+
         init = lambda x: nn.init.zeros_(x)
 
-        init(self.l1.weight)
-        init(self.l2.weight)
-        init(self.l3.weight)
+        #init(self.l1.weight)
+        #init(self.l2.weight)
+        #init(self.l3.weight)
 
     def forward(self, X):
+        #if len(X.size()) == 1:
+        #    X = X.unsqueeze(0)
+        X = self.preprocess(X)
         q = F.relu(self.l1(X))
         q = F.relu(self.l2(q))
         # print(self.l3(q))
@@ -130,14 +155,14 @@ class TD3_single():
         expl_noise = max(self.expl_noise_final, self.expl_noise_init * (1 - self.iter * self.expl_noise_decay_rate))
         action = self.actor(obs)  # assume they are on the same device
         action += torch.Tensor(expl_noise * np.random.normal(loc=0, scale=self.max_action, size=action.size())).to(
-            action.device())
+            action.device)
         action = action.clamp(-self.max_action, self.max_action)
 
         return action
 
 
 class DDPG_single():
-    def __init__(self, state_dim, action_dim, max_action, num_agents, learning_rate):
+    def __init__(self, state_dim, action_dim, max_action, num_agents, learning_rate, discrete_action = True, grid_per_action = 20):
         self.max_action = max_action
 
         self.actor = Actor_DDPG(state_dim, action_dim, max_action)
@@ -158,9 +183,11 @@ class DDPG_single():
         self.exploration.reset()
 
     def select_action(self, obs, explore=False):
+        self.actor.eval()
         action = self.actor(obs)
+        self.actor.train()
         if explore:
-            device = action.device()
+            device = action.device
             action += torch.Tensor(self.exploration.noise()).to(device)
         action = action.clamp(-self.max_action, self.max_action)
 

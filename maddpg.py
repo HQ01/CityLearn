@@ -3,10 +3,11 @@ import torch.nn.functional as fix
 # from gym.spaces import Box, Discrete
 # from misc import soft_update, average_gradients
 from single_agents import DDPG_single, TD3_single
+from utils import ActionSpaceConverter
 
 MSELoss = torch.nn.MSELoss()
 class MA_DDPG():
-    def __init__(self, observation_spaces = None, action_spaces = None, hyper_params = {}):
+    def __init__(self, observation_spaces = None, action_spaces = None, hyper_params = {}, discrete_action=True, grid_per_action=20):
         """
         Input:
             observation_spaces
@@ -16,6 +17,8 @@ class MA_DDPG():
         self.n_buildings = len(observation_spaces)
         self.algo_type = 'DDPG' # "TD3"
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.discrete_action = discrete_action
+        self.grid_per_action = grid_per_action
 
         self.gamma = hyper_params.get('gamma', 0.992) #self.discount
         self.lr = hyper_params.get('lr', 1e-4)
@@ -51,9 +54,11 @@ class MA_DDPG():
         #\TODO match dimension with buffer input
         state_dim = observation_spaces[0].shape[0]
         action_dim = action_spaces[0].shape[0]
+        max_action = action_spaces[0].high
+        converter = ActionSpaceConverter(max_action, self.grid_per_action)
 
         if self.algo_type == 'DDPG':
-            self.agents = [DDPG_single(state_dim, action_dim, self.max_action, num_agents=self.n_buildings, learning_rate=self.lr)]
+            self.agents = [DDPG_single(state_dim, action_dim, self.max_action, num_agents=self.n_buildings, learning_rate=self.lr, discrete_action = self.discrete_action, grid_per_action=self.grid_per_action)]
         else:
             self.agents = [TD3_single(state_dim, action_dim, self.max_action, self.expl_noise_init, self.expl_noise_final, self.expl_noise_decay_rate)]
         self.agents *= self.n_buildings
@@ -78,7 +83,7 @@ class MA_DDPG():
         for a in self.agents:
             a.iter = 0
     
-    def select_action(self, observations, explore=False):
+    def select_action(self, observations, explore=True):
         '''
         Take a step of actions for all agents)
         '''

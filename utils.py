@@ -7,6 +7,20 @@ import torch.distributed as dist
 from torch.autograd import Variable
 import numpy as np
 
+
+class ActionSpaceConverter():
+    def __init__(self, max_action, grid_per_action):
+        self.step = (max_action * 2) / grid_per_action
+        self.max_action = max_action
+        self.grid_per_action = grid_per_action
+    
+    def index2val(self, idx):
+        # input an index one hot matrix num_action * grid_per_action, output a list of size (num_actions)
+        # assume 
+        chosen_idx = idx.dot(np.arange(self.grid_per_action))
+        return [-self.max_action + int(chosen_idx[i]) * self.step for i in range(len(chosen_idx))]
+    
+
 # OU nouise for DDPG:
 # from https://github.com/songrotek/DDPG/blob/master/ou_noise.py
 class OUNoise:

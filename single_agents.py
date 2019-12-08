@@ -67,34 +67,43 @@ class Actor_DDPG(nn.Module):
     def __init__(self, state_dim, action_dim, max_action):
         super(Actor_DDPG, self).__init__()
 
-        self.l1 = nn.Linear(state_dim, 400)
-        self.l2 = nn.Linear(400, 300)
-        self.l3 = nn.Linear(300, action_dim)
+        self.l1 = nn.Linear(state_dim, 32)
+        self.l2 = nn.Linear(32, 16)
+        self.l3 = nn.Linear(32, action_dim)
+        self.tanh = nn.Tanh()
+
+        init = lambda x: nn.init.zeros_(x)
+        init(self.l1.weight)
+        init(self.l2.weight)
+        init(self.l3.weight)
 
         self.max_action = max_action
 
     def forward(self, state):
         a = F.relu(self.l1(state))
-        a = F.relu(self.l2(a))
-        return self.max_action * torch.tanh(self.l3(a))
+        # a = F.relu(self.l2(a))
+        # print(self.l3(a))
+        return self.max_action * self.tanh(self.l3(a))
 
 
 class Critic_DDPG(nn.Module):
     def __init__(self, state_dim, action_dim, num_agents=1):
         super(Critic_DDPG, self).__init__()
 
-        self.l1 = nn.Linear((state_dim + action_dim) * num_agents, 400)
-        self.l2 = nn.Linear(400, 300)
-        self.l3 = nn.Linear(300, 1)
+        self.l1 = nn.Linear((state_dim + action_dim) * num_agents, 64)
+        self.l2 = nn.Linear(64, 32)
+        self.l3 = nn.Linear(32, 1)
 
-    # def forward(self, state, action):
-    #     q = F.relu(self.l1(torch.cat([state, action], 1)))
-    #     q = F.relu(self.l2(q))
-    #     return self.l3(q)
+        init = lambda x: nn.init.zeros_(x)
+
+        init(self.l1.weight)
+        init(self.l2.weight)
+        init(self.l3.weight)
 
     def forward(self, X):
         q = F.relu(self.l1(X))
         q = F.relu(self.l2(q))
+        # print(self.l3(q))
         return self.l3(q)
 
 class TD3_single():

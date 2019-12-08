@@ -75,7 +75,7 @@ class ReplayBuffer(object):
         # TODO: Fix buffer
         nentries = 1  # handle multiple parallel environments
         dones = [done] * self.num_agents
-        if self.curr_i + 1 > self.max_steps:
+        if self.curr_i + nentries > self.max_steps:
             rollover = self.max_steps - self.curr_i # num of indices to roll over
             for agent_i in range(self.num_agents):
                 self.obs_buffs[agent_i] = np.roll(self.obs_buffs[agent_i],

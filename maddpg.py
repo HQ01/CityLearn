@@ -23,7 +23,7 @@ class MA_DDPG():
         self.tau = hyper_params.get('tau', 5e-3)
         #\TODO should we enable min_samples_training?
         # self.min_samples_training = hyper_params.get('min_samples_training', 400)
-        self.max_action = hyper_params.get('max_action', 1)
+        self.max_action = hyper_params.get('max_action', 0.5)
 
         '''
         # we don't change lr rate at this time \TODO verify s
@@ -34,7 +34,7 @@ class MA_DDPG():
 
 
         # TD3 hyper-params
-        self.policy_freq = hyper_params.get('policy_freq', 2)
+        self.policy_freq = hyper_params.get('policy_freq', 10)
         self.policy_noise = hyper_params.get('policy_noise', 0.025 * 0)
         self.noise_clip = hyper_params.get('noise_clip', 0.04 * 0)
         self.expl_noise_init = hyper_params.get('expl_noise_init', 0.75)
@@ -99,31 +99,18 @@ class MA_DDPG():
             noise_f = lambda x : x + (torch.randn_like(x) * self.policy_noise).clamp(-self.noise_clip, self.noise_clip).to(x.device)
             all_target_actions = list(map(noise_f, all_target_actions))
 
-        # if self.algo_type == 'DDPG':
-        #     target_value_function = torch.cat((next_obs[agent_id], all_target_actions[agent_id]), dim=1)
-        #     target_value = (
-        #             rewards[agent_id].view(-1, 1) + self.gamma * curr_agent.critic_target(target_value_function) * \
-        #             (1 - dones[agent_id].view(-1, 1)))
-        #     actual_value_function = torch.cat((obs[agent_id], actions[agent_id]), dim=1)
-        #     actual_value = curr_agent.critic(actual_value_function)
-        # else:
-        #     target_value_function = torch.cat((next_obs, all_target_actions), dim=1)
-        #     target_value = (
-        #             rewards[agent_id].view(-1, 1) + self.gamma * curr_agent.critic_target(target_value_function) * \
-        #             (1 - dones[agent_id].view(-1, 1)))
-        #     actual_value_function = torch.cat((*obs, *actions), dim=1)
-        #     actual_value = curr_agent.critic(actual_value_function)
-
         target_value_function = torch.cat((*next_obs, *all_target_actions), dim=1)
         target_value = (
                 rewards[agent_id].view(-1, 1) + self.gamma * curr_agent.critic_target(target_value_function) * \
                 (1 - dones[agent_id].view(-1, 1)))
+        # print(rewards[agent_id])
         actual_value_function = torch.cat((*obs, *actions), dim=1)
         actual_value = curr_agent.critic(actual_value_function)
 
         value_function_loss = MSELoss(actual_value, target_value.detach())
+        # print([a.detach().numpy() for a in [value_function_loss.mean(), actual_value.mean()]])
         value_function_loss.backward()
-        torch.nn.utils.clip_grad_norm(curr_agent.critic.parameters(), 0.5)
+        torch.nn.utils.clip_grad_norm_(curr_agent.critic.parameters(), 0.5)
         curr_agent.critic_optimizer.step()
 
         if self.algo_type == "DDPG" or curr_agent.iter % self.policy_freq == 0:
@@ -143,8 +130,10 @@ class MA_DDPG():
             policy_function_loss = -curr_agent.critic(policy_function).mean()
             policy_function_loss += (curr_agent_policy**2).mean() * 1e-3
             policy_function_loss.backward()
+            # print(self.agents[0].actor.l1.weight.grad.mean(), self.agents[0].actor.l1.weight.grad.sum(), end=' ')
+            # print(self.agents[0].actor.l1.weight.grad.norm())
 
-            torch.nn.utils.clip_grad_norm(curr_agent.actor.parameters(), 0.5)
+            # torch.nn.utils.clip_grad_norm_(curr_agent.actor.parameters(), 0.5)
             curr_agent.actor_optimizer.step()
 
             # update target
@@ -153,9 +142,9 @@ class MA_DDPG():
 
         curr_agent.iter += 1
         if logger is not None:
-            logger.add_scalar(tag='value fucntion loss', scalar_value=value_function_loss,
+            logger.add_scalar(tag='value function loss', scalar_value=value_function_loss,
                               global_step=global_step)
-            logger.add_scalar(tag='policy fucntion loss', scalar_value=value_function_loss,
+            logger.add_scalar(tag='policy function loss', scalar_value=value_function_loss,
                               global_step=global_step)
 
     def soft_update(self, target, source, tau):

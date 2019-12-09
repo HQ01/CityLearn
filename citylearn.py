@@ -5,7 +5,8 @@ import pandas as pd
 import json
 from energy_models import HeatPump, ElectricHeater, EnergyStorage, Building
 
-TIME_PERIOD = 1000
+TIME_PERIOD = 1008
+# TIME_PERIOD = 12
 
 
 # Reference Rule-based controller. Used as a baseline to calculate the costs in CityLearn
@@ -364,6 +365,7 @@ class CityLearn(gym.Env):
             cost['quadratic'] = (self.net_electric_consumption.clip(min=0) ** 2).sum() / self.cost_rbc['quadratic']
 
         cost['total'] = np.mean([c for c in cost.values()])
+        
 
         return cost
 

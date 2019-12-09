@@ -64,7 +64,7 @@ class Critic_TD3(nn.Module):
 
 
 class Actor_DDPG(nn.Module):
-    def __init__(self, state_dim, action_dim, max_action):
+    def __init__(self, state_dim, action_dim, max_action, hidden_dim):
         super(Actor_DDPG, self).__init__()
 
         self.preprocess = nn.BatchNorm1d(state_dim)
@@ -74,9 +74,9 @@ class Actor_DDPG(nn.Module):
         # self.preprocess = lambda x: x
 
 
-        self.l1 = nn.Linear(state_dim, 32)
-        self.l2 = nn.Linear(32, 32)
-        self.l3 = nn.Linear(32, action_dim)
+        self.l1 = nn.Linear(state_dim, hidden_dim*2)
+        self.l2 = nn.Linear(hidden_dim*2, hidden_dim)
+        self.l3 = nn.Linear(hidden_dim, action_dim)
         self.tanh = nn.Tanh()
 
         self.l3.weight.data.uniform_(-3e-3, 3e-3)
@@ -102,7 +102,7 @@ class Actor_DDPG(nn.Module):
 
 
 class Critic_DDPG(nn.Module):
-    def __init__(self, state_dim, action_dim, num_agents=1):
+    def __init__(self, state_dim, action_dim, num_agents, hidden_dim):
         super(Critic_DDPG, self).__init__()
 
         self.preprocess = nn.BatchNorm1d((state_dim + action_dim) * num_agents)
@@ -110,9 +110,9 @@ class Critic_DDPG(nn.Module):
         self.preprocess.bias.data.fill_(0)
         # self.preprocess = lambda x: x
 
-        self.l1 = nn.Linear((state_dim + action_dim) * num_agents, 64)
-        self.l2 = nn.Linear(64, 32)
-        self.l3 = nn.Linear(32, 1)
+        self.l1 = nn.Linear((state_dim + action_dim) * num_agents, hidden_dim*2)
+        self.l2 = nn.Linear(hidden_dim*2, hidden_dim)
+        self.l3 = nn.Linear(hidden_dim, 1)
 
         #self.l3.weight.data.uniform_(-3e-3, 3e-3)
 
@@ -162,14 +162,14 @@ class TD3_single():
 
 
 class DDPG_single():
-    def __init__(self, state_dim, action_dim, max_action, num_agents, learning_rate, discrete_action = True, grid_per_action = 20):
+    def __init__(self, state_dim, action_dim, max_action, num_agents, learning_rate, discrete_action = True, grid_per_action = 20, hidden_dim=32):
         self.max_action = max_action
 
-        self.actor = Actor_DDPG(state_dim, action_dim, max_action)
+        self.actor = Actor_DDPG(state_dim, action_dim, max_action, hidden_dim)
         self.actor_target = copy.deepcopy(self.actor)
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=learning_rate)
 
-        self.critic = Critic_DDPG(state_dim, action_dim, num_agents)
+        self.critic = Critic_DDPG(state_dim, action_dim, num_agents, hidden_dim)
         self.critic_target = copy.deepcopy(self.critic)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=learning_rate)
         self.exploration = OUNoise(action_dim)

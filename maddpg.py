@@ -27,6 +27,7 @@ class MA_DDPG():
         #\TODO should we enable min_samples_training?
         # self.min_samples_training = hyper_params.get('min_samples_training', 400)
         self.max_action = hyper_params.get('max_action', 0.5)
+        self.hidden_dim = hyper_params.get("hidden_dim", 32)
 
         '''
         # we don't change lr rate at this time \TODO verify s
@@ -58,7 +59,7 @@ class MA_DDPG():
         converter = ActionSpaceConverter(max_action, self.grid_per_action)
 
         if self.algo_type == 'DDPG':
-            self.agents = [DDPG_single(state_dim, action_dim, self.max_action, num_agents=self.n_buildings, learning_rate=self.lr, discrete_action = self.discrete_action, grid_per_action=self.grid_per_action)]
+            self.agents = [DDPG_single(state_dim, action_dim, self.max_action, num_agents=self.n_buildings, learning_rate=self.lr, discrete_action = self.discrete_action, grid_per_action=self.grid_per_action, hidden_dim=self.hidden_dim)]
         else:
             self.agents = [TD3_single(state_dim, action_dim, self.max_action, self.expl_noise_init, self.expl_noise_final, self.expl_noise_decay_rate)]
         self.agents *= self.n_buildings
@@ -147,9 +148,9 @@ class MA_DDPG():
 
         curr_agent.iter += 1
         if logger is not None:
-            logger.add_scalar(tag='value function loss', scalar_value=value_function_loss,
+            logger.add_scalar(tag='agent %d value function loss' % (agent_id), scalar_value=value_function_loss,
                               global_step=global_step)
-            logger.add_scalar(tag='policy function loss', scalar_value=value_function_loss,
+            logger.add_scalar(tag='agent %d policy function loss' % (agent_id), scalar_value=value_function_loss,
                               global_step=global_step)
 
     def soft_update(self, target, source, tau):

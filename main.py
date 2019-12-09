@@ -13,7 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 from citylearn import TIME_PERIOD
 
 # implement main
-USE_CUDA = torch.cuda.is_available()
+USE_CUDA = False
 
 # TODO: error when predefined action space does not match the actual space returned by env
 # Building 9 raises this bug
@@ -24,11 +24,23 @@ def run(config):
     solar_profile = data_folder / 'solar_generation_1kW.csv'
     building_state_actions = 'buildings_state_action_space.json'
     # building_ids = ["Building_" + str(i) for i in range(1, config.num_buildings + 1)]
-    config.num_buildings = 3
-    logger  = SummaryWriter(log_dir=config.log_path)
+    config.num_buildings = 6
+    
+    
+    # customized log directory
+    hidden = config.hidden_dim
+    lr = config.lr
+    tau = config.tau
+    gamma = config.gamma
+    batch_size = config.batch_size
+    buffer_length = config.buffer_length
+    to_print = lambda x : str(x)
+    log_path = "log"+"_hidden"+to_print(hidden)+"_lr"+to_print(lr)+"_tau"+to_print(tau)+"_gamma"+to_print(gamma)+\
+                "_batch_size"+to_print(batch_size)+"_buffer_length"+to_print(buffer_length)+"_TIME_PERIOD_1008"+"/"
+    
+    logger  = SummaryWriter(log_dir=log_path, comment='fuck')
     # TODO fix here
-    building_ids = ["Building_" + str(i) for i in [1, 2, 5]] #[1,2,5,6,7,8]
-    print(building_ids)
+    building_ids = ["Building_" + str(i) for i in [1, 2, 5, 6, 7, 8]] #[1,2,5,6,7,8]
     env = CityLearn(building_attributes, solar_profile, building_ids, buildings_states_actions=building_state_actions,
                     cost_function=['ramping', '1-load_factor', 'peak_to_valley_ratio', 'peak_demand',
                                    'net_electricity_consumption'])
@@ -61,14 +73,13 @@ def run(config):
             action = [a.detach().numpy() for a in action]
             # if batch norm:
             action = [np.squeeze(a, axis=0) for a in action]
-            if ss % 10 == 0:
-                print(ss, action)
             ss += 1
             #print("action is ", action)
             #print(action[0].shape)
             #raise NotImplementedError
             next_state, reward, done, _ = env.step(action)
             reward = reward_function(reward)  # See comments in reward_function.py
+            #buffer_reward = [-r for r in reward]
             # agents.add_to_buffer()
             buffer.push(statecast(state), action, reward, statecast(next_state), done)
             # if (len(buffer) >= config.batch_size and
@@ -82,10 +93,25 @@ def run(config):
                     sample = buffer.sample(config.batch_size,
                                            to_gpu=USE_CUDA)
                     agents.update(sample, a_i, logger=logger, global_step=e*TIME_PERIOD + ss)
-                    # print('update')
-
-                # maddpg.update_all_targets()
-                # maddpg.prep_rollouts(device='cpu')
+            logger.add_scalar(tag='net electric consumption', scalar_value=env.net_electric_consumption[-1],
+                              global_step=e*TIME_PERIOD + ss)
+            logger.add_scalar(tag='env cost total', scalar_value=env.cost()['total'],
+                              global_step=e*TIME_PERIOD + ss)
+            logger.add_scalar(tag="1 load factor", scalar_value=env.cost()['1-load_factor'],
+                              global_step=e*TIME_PERIOD + ss)
+            logger.add_scalar(tag="peak to valley ratio", scalar_value=env.cost()['peak_to_valley_ratio'],
+                              global_step=e*TIME_PERIOD + ss)
+            logger.add_scalar(tag="peak demand", scalar_value=env.cost()['peak_demand'],
+                              global_step=e*TIME_PERIOD + ss)
+            logger.add_scalar(tag="net energy consumption", scalar_value=env.cost()['net_electricity_consumption'],
+                              global_step=e*TIME_PERIOD + ss)
+            net_energy_consumption_wo_storage = env.net_electric_consumption[-1]+env.electric_generation[-1]-env.electric_consumption_cooling_storage[-1]-env.electric_consumption_dhw_storage[-1]
+            logger.add_scalar(tag="net energy consumption without storage", scalar_value=net_energy_consumption_wo_storage,
+                              global_step=e*TIME_PERIOD + ss)
+            
+            for id, r in enumerate(reward):
+                logger.add_scalar(tag="agent {} reward ".format(id), scalar_value=r, global_step=e*TIME_PERIOD+ss)
+            
             state = next_state
             cum_reward[e] += reward[0]
             k += 1
@@ -94,6 +120,20 @@ def run(config):
         cost[e] = env.cost()
         if c % 1 == 0:
             print(cost[e])
+        # add env total cost and reward logger
+        logger.add_scalar(tag='env cost total final', scalar_value=env.cost()['total'],
+                          global_step=e)
+        logger.add_scalar(tag="1 load factor final", scalar_value=env.cost()['1-load_factor'],
+                          global_step=e)
+        logger.add_scalar(tag="peak to valley ratio final", scalar_value=env.cost()['peak_to_valley_ratio'],
+                          global_step=e)
+        logger.add_scalar(tag="peak demand final", scalar_value=env.cost()['peak_demand'],
+                          global_step=e)
+        logger.add_scalar(tag="net energy consumption final", scalar_value=env.cost()['net_electricity_consumption'],
+                          global_step=e)
+        net_energy_consumption_wo_storage = env.net_electric_consumption[-1]+env.electric_generation[-1]-env.electric_consumption_cooling_storage[-1]-env.electric_consumption_dhw_storage[-1]
+        logger.add_scalar(tag="net energy consumption without storage", scalar_value=net_energy_consumption_wo_storage,
+                          global_step=e)
         c += 1
         rewards.append(reward)
 
@@ -114,21 +154,21 @@ if __name__ == '__main__':
                         help="Random seed")
     # parser.add_argument("--n_rollout_threads", default=1, type=int)
     # parser.add_argument("--n_training_threads", default=6, type=int)
-    parser.add_argument("--buffer_length", default=100, type=int)
+    parser.add_argument("--buffer_length", default=2000, type=int)
     parser.add_argument("--n_episodes", default=25000, type=int)
     # parser.add_argument("--episode_length", default=25, type=int)
     # parser.add_argument("--steps_per_update", default=100, type=int)
     parser.add_argument("--batch_size",
-                        default=10, type=int,
+                        default=32, type=int,
                         help="Batch size for model training")
     # parser.add_argument("--n_exploration_eps", default=25000, type=int)
     # parser.add_argument("--init_noise_scale", default=0.3, type=float)
     # parser.add_argument("--final_noise_scale", default=0.0, type=float)
     parser.add_argument("--save_interval", default=1000, type=int)
-    parser.add_argument("--hidden_dim", default=64, type=int)
+    parser.add_argument("--hidden_dim", default=32, type=int)
     parser.add_argument("--lr", default=1e-3, type=float)
     parser.add_argument("--tau", default=1e-6, type=float)
-    parser.add_argument("--gamma", default=0.8, type=float)
+    parser.add_argument("--gamma", default=0.992, type=float)
     parser.add_argument("--agent_alg",
                         default="MADDPG", type=str,
                         choices=['MADDPG', 'DDPG'])

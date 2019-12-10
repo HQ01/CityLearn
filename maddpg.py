@@ -26,7 +26,7 @@ class MA_DDPG():
         self.tau = hyper_params.get('tau', 5e-3)
         #\TODO should we enable min_samples_training?
         # self.min_samples_training = hyper_params.get('min_samples_training', 400)
-        self.max_action = hyper_params.get('max_action', 0.5)
+        self.max_action = hyper_params.get('max_action', 0.25)
         self.hidden_dim = hyper_params.get("hidden_dim", 32)
 
         '''

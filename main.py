@@ -36,9 +36,9 @@ def run(config):
     buffer_length = config.buffer_length
     to_print = lambda x : str(x)
     log_path = "log"+"_hidden"+to_print(hidden)+"_lr"+to_print(lr)+"_tau"+to_print(tau)+"_gamma"+to_print(gamma)+\
-                "_batch_size"+to_print(batch_size)+"_buffer_length"+to_print(buffer_length)+"_TIME_PERIOD_1008"+"/"
+                "_batch_size"+to_print(batch_size)+"_buffer_length"+to_print(buffer_length)+"_TIME_PERIOD_1008_MAXACTION_25"+"/"
     
-    logger  = SummaryWriter(log_dir=log_path, comment='fuck')
+    logger  = SummaryWriter(log_dir=log_path)
     # TODO fix here
     building_ids = ["Building_" + str(i) for i in [1, 2, 5, 6, 7, 8]] #[1,2,5,6,7,8]
     env = CityLearn(building_attributes, solar_profile, building_ids, buildings_states_actions=building_state_actions,
@@ -69,7 +69,7 @@ def run(config):
         while not done:
             if k % (40000 * 4) == 0:
                 print('hour: ' + str(k) + ' of ' + str(TIME_PERIOD * config.n_episodes))
-            action = agents.select_action(statecast(state))
+            action = agents.select_action(statecast(state), explore=False)
             action = [a.detach().numpy() for a in action]
             # if batch norm:
             action = [np.squeeze(a, axis=0) for a in action]
@@ -166,7 +166,7 @@ if __name__ == '__main__':
     # parser.add_argument("--final_noise_scale", default=0.0, type=float)
     parser.add_argument("--save_interval", default=1000, type=int)
     parser.add_argument("--hidden_dim", default=32, type=int)
-    parser.add_argument("--lr", default=1e-3, type=float)
+    parser.add_argument("--lr", default=1e-4, type=float)
     parser.add_argument("--tau", default=1e-6, type=float)
     parser.add_argument("--gamma", default=0.992, type=float)
     parser.add_argument("--agent_alg",
